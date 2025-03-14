@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>简单聊天室</title>
+    <style>
+        #messages { list-style-type: none; padding: 0; max-height: 300px; overflow-y: auto; }
+        #messages li { padding: 5px; border-bottom: 1px solid #ddd; }
+        #messageInput { width: 70%; padding: 5px; }
+        button { padding: 5px 10px; }
+    </style>
+</head>
+<body>
+<h1>简单聊天室</h1>
+<ul id="messages"></ul>
+<input id="messageInput" type="text" placeholder="输入消息">
+<button onclick="sendMessage()">发送</button>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    console.log('连接到服务器');
+
+    const messages = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+
+    // 接收消息
+    socket.on('chatMessage', (msg) => {
+        const li = document.createElement('li');
+        li.textContent = msg;
+        messages.appendChild(li);
+        messages.scrollTop = messages.scrollHeight; // 自动滚动到底部
+    });
+
+    // 发送消息
+    function sendMessage() {
+        const msg = messageInput.value.trim();
+        if (msg) {
+            socket.emit('chatMessage', msg);
+            messageInput.value = '';
+        }
+    }
+
+    // 回车键发送
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
+</body>
+</html>

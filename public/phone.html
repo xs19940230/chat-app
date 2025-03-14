@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- 适配手机视口 -->
+    <title>简单聊天室</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            height: 50vh; /* 占满屏幕高度 */
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            font-size: 5vw; /* 根据屏幕宽度调整标题大小 */
+            margin: 0 0 10px 0;
+            text-align: center;
+            color: #333;
+        }
+        #messages {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1; /* 消息区域占满剩余空间 */
+            overflow-y: auto; /* 滚动显示消息 */
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        #messages li {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            word-wrap: break-word; /* 长消息自动换行 */
+            font-size: 4vw; /* 消息文字适配屏幕 */
+        }
+        .input-area {
+            display: flex;
+            padding-top: 10px;
+            gap: 10px; /* 输入框和按钮间距 */
+        }
+        #messageInput {
+            flex-grow: 1; /* 输入框占满可用空间 */
+            padding: 10px;
+            font-size: 4vw; /* 文字大小适配 */
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 4vw; /* 按钮文字适配 */
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:active {
+            background-color: #0056b3; /* 点击时变色 */
+        }
+    </style>
+</head>
+<body>
+<h1>简单聊天室</h1>
+<ul id="messages"></ul>
+<div class="input-area">
+    <input id="messageInput" type="text" placeholder="输入消息">
+    <button onclick="sendMessage()">发送</button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    console.log('连接到服务器');
+
+    const messages = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+
+    // 接收消息
+    socket.on('chatMessage', (msg) => {
+        const li = document.createElement('li');
+        li.textContent = msg;
+        messages.appendChild(li);
+        messages.scrollTop = messages.scrollHeight; // 自动滚动到底部
+    });
+
+    // 发送消息
+    function sendMessage() {
+        const msg = messageInput.value.trim();
+        if (msg) {
+            socket.emit('chatMessage', msg);
+            messageInput.value = '';
+        }
+    }
+
+    // 回车键发送（手机上也能触发）
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
+</body>
+</html>
