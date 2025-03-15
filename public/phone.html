@@ -10,7 +10,7 @@
             padding: 10px;
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
-            height: 50vh; /* 占满屏幕高度 */
+            height: 90vh; /* 占满屏幕高度 */
             display: flex;
             flex-direction: column;
         }
@@ -65,7 +65,7 @@
     </style>
 </head>
 <body>
-<h1>简单聊天室</h1>
+<h1>简单聊天室 v0.1</h1>
 <ul id="messages"></ul>
 <div class="input-area">
     <input id="messageInput" type="text" placeholder="输入消息">
@@ -79,9 +79,16 @@
 
     const messages = document.getElementById('messages');
     const messageInput = document.getElementById('messageInput');
+    const max_display = 20;
+    let messageCount = 0;
 
     // 接收消息
     socket.on('chatMessage', (msg) => {
+        if (messageCount >= max_display) {
+            messages.removeChild(messages.firstChild);
+        } else {
+            messageCount++;
+        }
         const li = document.createElement('li');
         li.textContent = msg;
         messages.appendChild(li);
