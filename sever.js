@@ -26,12 +26,16 @@ io.on('connection', (socket) =>
 
         //接受客户端消息，并广播
         socket.on('chatMessage', (msg) => {
+            const message = {
+                content: msg,
+                timestamp: new Date().toLocaleString('zh-CN',{hour12: false})
+            }
             if (messageQueue.length >= Max_Messages) {
                 messageQueue.shift();
             }
-            messageQueue.push(msg);
-            console.log('收到消息：',msg,'队列长度：',messageQueue.length);
-            io.emit('chatMessage', msg);
+            messageQueue.push(message);
+            console.log('收到消息：',message.content,'队列长度：',messageQueue.length);
+            io.emit('chatMessage', message);
         });
     socket.on('disconnect', () =>
     {console.log('user disconnected!');});
