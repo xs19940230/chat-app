@@ -10,10 +10,16 @@ const io = require('socket.io')(http);
 // 提供静态文件（后面放 HTML）
 app.use(express.static('public'));
 app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/login.html'); // 默认登录页
+});
+app.get('/chat', (req, res) => {
     res.sendFile(__dirname + '/public/phone.html');
 });
 
-let users = [];
+let users = {
+    'admin': '54desperado',
+    'user': '54desperado'
+};
 let messageQueue = [];
 const Max_Messages = 50;
 
@@ -21,13 +27,32 @@ const Max_Messages = 50;
 //为io设置一个事件监听器
 io.on('connection', (socket) =>
     {console.log('user connected!');
-        //发送历史消息
-        socket.emit('history',messageQueue);
+
+        socket.on('login', ({ username, password }) => {
+            if (users[username] && users[username] === password) {
+                socket.username = username; // 记录用户身份
+                socket.emit('loginSuccess');
+                socket.emit('history', messageQueue); // 登录成功发历史消息
+            } else {
+                socket.emit('loginFail', '用户名或密码错误');
+            }
+        });
+        socket.on('relogin', (username) => {
+            if (users[username]) {
+                socket.username = username;
+                console.log('重新登录，用户:', socket.username);
+                socket.emit('history', messageQueue);
+            }
+        });
 
         //接受客户端消息，并广播
         socket.on('chatMessage', (msg) => {
+            if (!socket.username) {
+                socket.emit('loginFail', '请先登录');
+                return;
+            }
             const message = {
-                content: msg,
+                content: `${socket.username}: ${msg}`,
                 timestamp: new Date().toLocaleString('zh-CN',{hour12: false})
             }
             if (messageQueue.length >= Max_Messages) {

@@ -87,6 +87,12 @@
     const max_display = 50;
     let messageCount = 0;
     //接收历史消息
+    // 从本地存储获取用户名（临时方案）
+    const username = localStorage.getItem('username');
+    if (username) {
+        socket.emit('relogin', username);
+    }
+
     socket.on('history', (history) => {
         history.forEach((msg) => {
             if (messageCount < max_display) {
