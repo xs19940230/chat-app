@@ -9,6 +9,8 @@
             margin: 0;
             padding: 20px;
             font-family: Arial, sans-serif;
+            background: url('3.jpeg') no-repeat center center fixed;
+            background-size: cover;
             background-color: #f0f0f0;
             height: 100vh;
             display: flex;
@@ -18,10 +20,11 @@
         }
         h1 {
             font-size: 6vw;
-            color: #333;
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
         }
         .login-box {
-            background-color: #fff;
+            background-color: rgba(255, 255, 255, 0.9);
             padding: 20px;
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -59,11 +62,11 @@
     </style>
 </head>
 <body>
-<h1>聊天室登录</h1>
+<h1>Dear Diary</h1>
 <div class="login-box">
-    <input id="username" type="text" placeholder="用户名">
-    <input id="password" type="password" placeholder="密码">
-    <button onclick="login()">登录</button>
+    <input id="username" type="text" placeholder="user">
+    <input id="password" type="password" placeholder="password">
+    <button onclick="login()">Login</button>
     <div id="error"></div>
 </div>
 
