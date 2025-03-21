@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- 适配手机视口 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dear Diary</title>
     <style>
         body {
@@ -11,12 +11,12 @@
             font-family: Arial, sans-serif;
             background: url('a.jpeg') no-repeat center center fixed;
             background-size: cover;
-            height: 85vh; /* 占满屏幕高度 */
+            height: 85vh;
             display: flex;
             flex-direction: column;
         }
         h1 {
-            font-size: 5vw; /* 根据屏幕宽度调整标题大小 */
+            font-size: 5vw;
             margin: 0 0 10px 0;
             text-align: center;
             color: #fff;
@@ -26,8 +26,8 @@
             list-style-type: none;
             padding: 0;
             margin: 0;
-            flex-grow: 1; /* 消息区域占满剩余空间 */
-            overflow-y: auto; /* 滚动显示消息 */
+            flex-grow: 1;
+            overflow-y: auto;
             background-color: rgba(255, 255, 255, 0.9);
             border: 1px solid #ddd;
             border-radius: 5px;
@@ -36,8 +36,8 @@
         #messages li {
             padding: 8px;
             border-bottom: 1px solid #eee;
-            word-wrap: break-word; /* 长消息自动换行 */
-            font-size: 4vw; /* 消息文字适配屏幕 */
+            word-wrap: break-word;
+            font-size: 4vw;
         }
         .timestamp {
             color: #666;
@@ -47,89 +47,231 @@
         .input-area {
             display: flex;
             padding-top: 10px;
-            gap: 10px; /* 输入框和按钮间距 */
+            gap: 10px;
         }
         #messageInput {
-            flex-grow: 1; /* 输入框占满可用空间 */
+            flex-grow: 1;
             padding: 10px;
-            font-size: 4vw; /* 文字大小适配 */
+            font-size: 4vw;
             border: 1px solid #ccc;
             border-radius: 5px;
             outline: none;
         }
         button {
             padding: 10px 20px;
-            font-size: 4vw; /* 按钮文字适配 */
+            font-size: 4vw;
             background-color: #007bff;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            touch-action: manipulation; /* 优化触摸事件 */
         }
         button:active {
-            background-color: #0056b3; /* 点击时变色 */
+            background-color: #0056b3;
+        }
+        #error {
+            color: red;
+            font-size: 3vw;
+            text-align: center;
+        }
+        #keyModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        #keyBox {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 400px;
+        }
+        #privateKeyInput {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            font-size: 3vw;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-<h1>Dear Diary v0.21</h1>
+<h1>Dear Diary v0.3</h1>
 <ul id="messages"></ul>
 <div class="input-area">
-    <input id="messageInput" type="text" placeholder="input message">
-    <button onclick="sendMessage()">Send</button>
+    <input id="messageInput" type="text" placeholder="log Diary">
+    <button id="actionButton">log</button>
+</div>
+<div id="error"></div>
+<div id="keyModal">
+    <div id="keyBox">
+        <h3>setting</h3> <!-- 模糊标题，隐藏解密意图 -->
+        <textarea id="privateKeyInput" placeholder="Bazinga"></textarea>
+        <br>
+        <button onclick="verifyAndDecrypt()">Bazinga</button>
+    </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.0.0-rc.1/jsencrypt.min.js"></script>
 <script>
     const socket = io();
-    console.log('连接到服务器');
+    const encryptor = new JSEncrypt();
+    const decryptor = new JSEncrypt();
+    let messagesData = [];
+    let isDecrypted = false;
 
     const messages = document.getElementById('messages');
     const messageInput = document.getElementById('messageInput');
+    const errorDiv = document.getElementById('error');
+    const keyModal = document.getElementById('keyModal');
+    const privateKeyInput = document.getElementById('privateKeyInput');
+    const actionButton = document.getElementById('actionButton');
     const max_display = 50;
     let messageCount = 0;
-    //接收历史消息
-    // 从本地存储获取用户名（临时方案）
+
+    // Dummy 内容生成
+    function generateDummyContent(length) {
+        const dummyWords = ['天气不错', '今天很忙', '随便写写', '没什么特别的', '加油加油'];
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += dummyWords[Math.floor(Math.random() * dummyWords.length)] + ' ';
+        }
+        return result.trim();
+    }
+
+    socket.on('publicKey', (publicKey) => {
+        encryptor.setPublicKey(publicKey);
+        //console.log('收到公钥');
+    });
+
     const username = localStorage.getItem('username');
     if (username) {
         socket.emit('relogin', username);
     }
 
-    socket.on('history', (history) => {
-        history.forEach((msg) => {
+    function displayMessages() {
+        messages.innerHTML = '';
+        messageCount = 0;
+        messagesData.forEach((msg) => {
             if (messageCount < max_display) {
                 const li = document.createElement('li');
-                li.innerHTML = `${msg.content} <span class="timestamp">[${msg.timestamp}]</span>`;
-                //li.textContent = msg;
+                const content = isDecrypted && msg.decrypted ?
+                    `${msg.username}: ${msg.decrypted}` :
+                    `${msg.username}: ${generateDummyContent(3)}`;
+                li.innerHTML = `${content} <span class="timestamp">[${msg.timestamp}]</span>`;
                 messages.appendChild(li);
-                messageCount++;}
+                messageCount++;
+            }
         });
         messages.scrollTop = messages.scrollHeight;
-    })
-    // 接收消息
+    }
+
+    socket.on('history', (history) => {
+        messagesData = history.map(msg => ({
+            username: msg.username,
+            content: msg.content,
+            decrypted: null,
+            timestamp: msg.timestamp
+        }));
+        displayMessages();
+    });
+
     socket.on('chatMessage', (msg) => {
+        const message = {
+            username: msg.username,
+            content: msg.content,
+            decrypted: null,
+            timestamp: msg.timestamp
+        };
         if (messageCount >= max_display) {
+            messagesData.shift();
             messages.removeChild(messages.firstChild);
         } else {
             messageCount++;
         }
+        messagesData.push(message);
         const li = document.createElement('li');
-        li.innerHTML = `${msg.content} <span class="timestamp">[${msg.timestamp}]</span>`;
-        //li.textContent = msg;
+        const content = isDecrypted && message.decrypted ?
+            `${msg.username}: ${message.decrypted}` :
+            `${msg.username}: ${generateDummyContent(3)}`;
+        li.innerHTML = `${content} <span class="timestamp">[${msg.timestamp}]</span>`;
         messages.appendChild(li);
-        messages.scrollTop = messages.scrollHeight; // 自动滚动到底部
+        messages.scrollTop = messages.scrollHeight;
     });
 
-    // 发送消息
     function sendMessage() {
         const msg = messageInput.value.trim();
         if (msg) {
-            socket.emit('chatMessage', msg);
+            const encryptedMsg = encryptor.encrypt(msg);
+            if (encryptedMsg === false) {
+                errorDiv.textContent = '消息太长，无法加密（限 80 字）';
+                return;
+            }
+            socket.emit('chatMessage', encryptedMsg);
             messageInput.value = '';
         }
     }
 
-    // 回车键发送（手机上也能触发）
+    function showKeyModal() {
+        keyModal.style.display = 'flex';
+    }
+
+    function verifyAndDecrypt() {
+        const privateKey = privateKeyInput.value.trim();
+        if (!privateKey) {
+            errorDiv.textContent = '请输入内容';
+            return;
+        }
+        decryptor.setPrivateKey(privateKey);
+        let allValid = true;
+        messagesData.forEach((msg) => {
+            try {
+                msg.decrypted = decryptor.decrypt(msg.content);
+                if (msg.decrypted === null) allValid = false;
+            } catch (e) {
+                allValid = false;
+            }
+        });
+        if (allValid) {
+            isDecrypted = true;
+            displayMessages();
+            keyModal.style.display = 'none';
+            errorDiv.textContent = '';
+        } else {
+            errorDiv.textContent = '内容无效';
+            privateKeyInput.value = '';
+        }
+    }
+
+    // 按钮事件：点击发送，长按解密
+    let pressTimer;
+    actionButton.addEventListener('mousedown', () => {
+        pressTimer = setTimeout(showKeyModal, 2000); // 长按 1 秒触发
+    });
+    actionButton.addEventListener('mouseup', () => {
+        clearTimeout(pressTimer);
+        sendMessage(); // 松开时发送
+    });
+    actionButton.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // 防止默认触摸行为
+        pressTimer = setTimeout(showKeyModal, 2000);
+    });
+    actionButton.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        clearTimeout(pressTimer);
+        sendMessage();
+    });
+
     messageInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });

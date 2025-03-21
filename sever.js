@@ -6,6 +6,7 @@ const app = express();
 const http = require('http').createServer(app);
 //引入socket.io模块，并创建实例io
 const io = require('socket.io')(http);
+const fs = require('fs');
 
 // 提供静态文件（后面放 HTML）
 app.use(express.static('public'));
@@ -28,6 +29,9 @@ const Max_Messages = 50;
 io.on('connection', (socket) =>
     {console.log('user connected!');
 
+        //发送公钥
+        socket.emit('publicKey', fs.readFileSync('public.pem', 'utf8')); // 错误用法;
+
         socket.on('login', ({ username, password }) => {
             if (users[username] && users[username] === password) {
                 socket.username = username; // 记录用户身份
@@ -46,13 +50,14 @@ io.on('connection', (socket) =>
         });
 
         //接受客户端消息，并广播
-        socket.on('chatMessage', (msg) => {
+        socket.on('chatMessage', (encryptedMsg) => {
             if (!socket.username) {
                 socket.emit('loginFail', '请先登录');
                 return;
             }
             const message = {
-                content: `${socket.username}: ${msg}`,
+                username: socket.username,
+                content: encryptedMsg,
                 timestamp: new Date().toLocaleString('zh-CN',{hour12: false})
             }
             if (messageQueue.length >= Max_Messages) {
